@@ -12,6 +12,11 @@ trait IERC20 {
     fn approve(spender: ContractAddress, amount: u256) -> bool;
 }
 
+// 1 There is no initial allocation, all tokens are generated through minting.
+// 2 Anyone can call the mint function of the contract.
+// 3 A block can be minted every 100 seconds.
+// 4 The reward for each block is fixed and will be halved after every 200,000 blocks.
+// 5 Minting will stop when the total number of mints reaches 4,000,000,000.
 #[contract]
 mod SpiritStone {
     use super::IERC20;
