@@ -412,7 +412,7 @@ fn test__spend_allowance_unlimited() {
 #[test]
 #[available_gas(2000000)]
 #[should_panic(expected: ('mint limit reached', ))]
-fn test__mint() {
+fn test__mint_limit() {
     let minter: ContractAddress = contract_address_const::<2>();
     let amount = SpiritStone::block_reward();
 
@@ -422,6 +422,25 @@ fn test__mint() {
     assert(minter_balance == amount, 'Should eq amount');
 
     assert(SpiritStone::totalSupply() == amount, 'Should eq total supply');
+}
+
+#[test]
+#[available_gas(2000000)]
+fn test_mint() {
+    let minter: ContractAddress = contract_address_const::<2>();
+    let amount = SpiritStone::block_reward();
+
+    let cur_block_timestamp = get_block_timestamp();
+    set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
+
+    let supply_before = SpiritStone::totalSupply(minter);
+
+    SpiritStone::_mint(minter);
+
+    let minter_balance = SpiritStone::balanceOf(minter);
+    assert(minter_balance == amount, 'Should eq amount');
+
+    assert(SpiritStone::totalSupply() == supply_before + amount, 'Should eq total supply');
 }
 
 #[test]
