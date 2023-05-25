@@ -447,6 +447,21 @@ fn test_mint() {
 
 #[test]
 #[available_gas(2000000)]
+#[should_panic(expected: ('max supply reached', ))]
+fn test_mint_max_supply() {
+    let max_supply = SpiritStone::max_supply();
+    let block_reward = SpiritStone::block_reward(); 
+    SpiritStone::_total_supply::write(max_supply - block_reward + u256_from_felt252(1));
+
+    let cur_block_timestamp = get_block_timestamp();
+    set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
+
+    let minter: ContractAddress = contract_address_const::<2>();
+    SpiritStone::mint(minter);
+}
+
+#[test]
+#[available_gas(2000000)]
 fn test_available_supply() {
 
     assert(SpiritStone::available_mint_count() == 0_u64, 'Should eq 0');
