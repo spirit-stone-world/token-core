@@ -406,7 +406,9 @@ fn test__spend_allowance_unlimited() {
     SpiritStone::_approve(owner, spender, BoundedInt::max());
     SpiritStone::_spend_allowance(owner, spender, max_minus_one);
 
-    assert(SpiritStone::allowance(owner, spender) == BoundedInt::max(), 'Allowance should not change');
+    assert(
+        SpiritStone::allowance(owner, spender) == BoundedInt::max(), 'Allowance should not change'
+    );
 }
 
 #[test]
@@ -450,7 +452,7 @@ fn test_mint() {
 #[should_panic(expected: ('max supply reached', ))]
 fn test_mint_max_supply() {
     let max_supply = SpiritStone::max_supply();
-    let block_reward = SpiritStone::block_reward(); 
+    let block_reward = SpiritStone::block_reward();
     SpiritStone::_total_supply::write(max_supply - block_reward + u256_from_felt252(1));
 
     let cur_block_timestamp = get_block_timestamp();
@@ -463,7 +465,6 @@ fn test_mint_max_supply() {
 #[test]
 #[available_gas(2000000)]
 fn test_available_supply() {
-
     assert(SpiritStone::available_mint_count() == 0_u64, 'Should eq 0');
 
     let n = 10_u64;
@@ -476,13 +477,15 @@ fn test_available_supply() {
 #[test]
 #[available_gas(2000000)]
 fn test_block_reward() -> u64 {
-
     let mut n = 0_u64;
     let mut block_reward = u256_from_felt252(10000000000000000000000);
     let block_halve_interval = SpiritStone::block_halve_interval();
     loop {
         if n == 10_u64 {
-            assert(SpiritStone::block_reward() == u256_from_felt252(10000000000000000000), 'block_reward shoudl halve');
+            assert(
+                SpiritStone::block_reward() == u256_from_felt252(10000000000000000000),
+                'block_reward shoudl halve'
+            );
             break n;
         }
         assert(SpiritStone::block_reward() == block_reward, 'block_reward shoudl halve');

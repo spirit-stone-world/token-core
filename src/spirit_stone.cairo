@@ -78,9 +78,7 @@ mod SpiritStone {
             true
         }
 
-        fn transferFrom(
-            sender: ContractAddress, recipient: ContractAddress, amount: u256
-        ) -> bool {
+        fn transferFrom(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
             let caller = get_caller_address();
             _spend_allowance(sender, caller, amount);
             _transfer(sender, recipient, amount);
@@ -95,9 +93,7 @@ mod SpiritStone {
     }
 
     #[constructor]
-    fn constructor(
-        name: felt252, symbol: felt252
-    ) {
+    fn constructor(name: felt252, symbol: felt252) {
         initializer(name, symbol);
         _start_time::write(get_block_timestamp());
     }
@@ -157,11 +153,11 @@ mod SpiritStone {
 
     #[view]
     fn max_supply() -> u256 {
-        u256{low: MAX_SUPPLY, high: 0}
+        u256 { low: MAX_SUPPLY, high: 0 }
     }
 
     #[view]
-    fn block_halve_interval () -> u64 {
+    fn block_halve_interval() -> u64 {
         BLOCK_HALVE_INTERVAL
     }
 
@@ -170,27 +166,27 @@ mod SpiritStone {
         let already_minted = _mint_count::read();
         let n = already_minted / BLOCK_HALVE_INTERVAL;
         if (n == 0_u64) {
-            u256{low: 10000000000000000000000_u128, high: 0_u128}
+            u256 { low: 10000000000000000000000_u128, high: 0_u128 }
         } else if (n == 1_u64) {
-            u256{low: 5000000000000000000000_u128, high: 0_u128}
+            u256 { low: 5000000000000000000000_u128, high: 0_u128 }
         } else if (n == 2_u64) {
-            u256{low: 2500000000000000000000_u128, high: 0_u128}
+            u256 { low: 2500000000000000000000_u128, high: 0_u128 }
         } else if (n == 3_u64) {
-            u256{low: 1250000000000000000000_u128, high: 0_u128}
+            u256 { low: 1250000000000000000000_u128, high: 0_u128 }
         } else if (n == 4_u64) {
-            u256{low: 625000000000000000000_u128, high: 0_u128}
+            u256 { low: 625000000000000000000_u128, high: 0_u128 }
         } else if (n == 5_u64) {
-            u256{low: 312500000000000000000_u128, high: 0_u128}
+            u256 { low: 312500000000000000000_u128, high: 0_u128 }
         } else if (n == 6_u64) {
-            u256{low: 156250000000000000000_u128, high: 0_u128}
+            u256 { low: 156250000000000000000_u128, high: 0_u128 }
         } else if (n == 7_u64) {
-            u256{low: 78125000000000000000_u128, high: 0_u128}
+            u256 { low: 78125000000000000000_u128, high: 0_u128 }
         } else if (n == 8_u64) {
-            u256{low: 39062500000000000000_u128, high: 0_u128}
+            u256 { low: 39062500000000000000_u128, high: 0_u128 }
         } else if (n == 9_u64) {
-            u256{low: 19531250000000000000_u128, high: 0_u128}
+            u256 { low: 19531250000000000000_u128, high: 0_u128 }
         } else {
-            u256{low: 10000000000000000000_u128, high: 0_u128}
+            u256 { low: 10000000000000000000_u128, high: 0_u128 }
         }
     }
 
@@ -251,7 +247,7 @@ mod SpiritStone {
     #[internal]
     fn _mint(recipient: ContractAddress) {
         assert(!recipient.is_zero(), 'SpiritStone: mint to 0');
-        
+
         // check available mint count
         assert(available_mint_count() > 0, 'mint limit reached');
 
@@ -300,5 +296,4 @@ mod SpiritStone {
             _approve(owner, spender, current_allowance - amount);
         }
     }
-
 }
