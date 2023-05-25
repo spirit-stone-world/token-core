@@ -408,6 +408,7 @@ fn test__spend_allowance_unlimited() {
 
 #[test]
 #[available_gas(2000000)]
+#[should_panic(expected: ('mint limit reached', ))]
 fn test__mint() {
     let minter: ContractAddress = contract_address_const::<2>();
     let amount = SpiritStone::block_reward();
