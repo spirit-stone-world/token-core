@@ -1,7 +1,8 @@
 use spirit_stone::spirit_stone::SpiritStone;
 use starknet::contract_address_const;
 use starknet::ContractAddress;
-use starknet::testing::set_caller_address;
+use starknet::get_block_timestamp;
+use starknet::testing::{set_caller_address, set_block_timestamp};
 use integer::u256;
 use integer::u256_from_felt252;
 use integer::BoundedInt;
@@ -21,10 +22,15 @@ const SYMBOL: felt252 = 222;
 //
 
 fn setup() -> (ContractAddress, u256) {
-    let initial_supply: u256 = u256_from_felt252(2000);
+    let initial_supply: u256 = SpiritStone::block_reward();
     let account: ContractAddress = contract_address_const::<1>();
     // Set account as default caller
     set_caller_address(account);
+
+    let cur_block_timestamp = get_block_timestamp();
+    set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
+
+    SpiritStone::mint(account);
 
     SpiritStone::constructor(NAME, SYMBOL);
     (account, initial_supply)
@@ -54,14 +60,11 @@ fn test_initializer() {
 #[test]
 #[available_gas(2000000)]
 fn test_constructor() {
-    let initial_supply: u256 = u256_from_felt252(2000);
+    let initial_supply: u256 = u256_from_felt252(0);
     let account: ContractAddress = contract_address_const::<1>();
     let decimals: u8 = 18_u8;
 
     SpiritStone::constructor(NAME, SYMBOL);
-
-    let owner_balance: u256 = SpiritStone::balanceOf(account);
-    assert(owner_balance == initial_supply, 'Should eq inital_supply');
 
     assert(SpiritStone::totalSupply() == initial_supply, 'Should eq inital_supply');
     assert(SpiritStone::name() == NAME, 'Name should be NAME');

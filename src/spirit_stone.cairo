@@ -151,6 +151,11 @@ mod SpiritStone {
     }
 
     #[view]
+    fn block_time() -> u64 {
+        BLOCK_TIME
+    }
+
+    #[view]
     fn max_supply() -> u256 {
         u256{low: MAX_SUPPLY, high: 0}
     }
