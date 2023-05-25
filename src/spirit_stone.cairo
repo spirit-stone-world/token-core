@@ -161,6 +161,11 @@ mod SpiritStone {
     }
 
     #[view]
+    fn block_halve_interval () -> u64 {
+        BLOCK_HALVE_INTERVAL
+    }
+
+    #[view]
     fn block_reward() -> u256 {
         let already_minted = _mint_count::read();
         let n = already_minted / BLOCK_HALVE_INTERVAL;
@@ -179,13 +184,13 @@ mod SpiritStone {
         } else if (n == 6_u64) {
             u256{low: 156250000000000000000_u128, high: 0_u128}
         } else if (n == 7_u64) {
-            u256{low: 8000000000000000000_u128, high: 0_u128}
+            u256{low: 78125000000000000000_u128, high: 0_u128}
         } else if (n == 8_u64) {
-            u256{low: 4000000000000000000_u128, high: 0_u128}
+            u256{low: 39062500000000000000_u128, high: 0_u128}
         } else if (n == 9_u64) {
-            u256{low: 2000000000000000000_u128, high: 0_u128}
+            u256{low: 19531250000000000000_u128, high: 0_u128}
         } else {
-            u256{low: 1000000000000000000_u128, high: 0_u128}
+            u256{low: 10000000000000000000_u128, high: 0_u128}
         }
     }
 

@@ -433,14 +433,48 @@ fn test_mint() {
     let cur_block_timestamp = get_block_timestamp();
     set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
 
-    let supply_before = SpiritStone::totalSupply(minter);
+    let supply_before = SpiritStone::totalSupply();
+    let mint_count_before = SpiritStone::mint_count();
 
-    SpiritStone::_mint(minter);
+    SpiritStone::mint(minter);
 
     let minter_balance = SpiritStone::balanceOf(minter);
     assert(minter_balance == amount, 'Should eq amount');
 
     assert(SpiritStone::totalSupply() == supply_before + amount, 'Should eq total supply');
+    assert(SpiritStone::mint_count() == mint_count_before + 1_u64, 'Should eq mint count');
+}
+
+#[test]
+#[available_gas(2000000)]
+fn test_available_supply() {
+
+    assert(SpiritStone::available_mint_count() == 0_u64, 'Should eq 0');
+
+    let n = 10_u64;
+    let cur_block_timestamp = get_block_timestamp();
+    set_block_timestamp(cur_block_timestamp + n * SpiritStone::block_time());
+
+    assert(SpiritStone::available_mint_count() == n, 'Should eq n');
+}
+
+#[test]
+#[available_gas(2000000)]
+fn test_block_reward() -> u64 {
+
+    let mut n = 0_u64;
+    let mut block_reward = u256_from_felt252(10000000000000000000000);
+    let block_halve_interval = SpiritStone::block_halve_interval();
+    loop {
+        if n == 10_u64 {
+            assert(SpiritStone::block_reward() == u256_from_felt252(10000000000000000000), 'block_reward shoudl halve');
+            break n;
+        }
+        assert(SpiritStone::block_reward() == block_reward, 'block_reward shoudl halve');
+        block_reward /= u256_from_felt252(2);
+        n += 1_u64;
+        SpiritStone::_mint_count::write(block_halve_interval * n);
+    }
 }
 
 #[test]
