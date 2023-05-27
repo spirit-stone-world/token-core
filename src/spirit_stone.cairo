@@ -14,9 +14,9 @@ trait IERC20 {
 
 // 1 There is no initial allocation, all tokens are generated through minting.
 // 2 Anyone can call the mint function of the contract.
-// 3 A block can be minted every 100 seconds.
-// 4 The reward for each block is fixed and will be halved after every 200,000 blocks.
-// 5 Minting will stop when the total number of mints reaches 4,000,000,000.
+// 3 A block can be minted every 50 seconds.
+// 4 The reward for each block is fixed and will be halved after every 400,000 blocks.
+// 5 Minting will stop when the total number of mints reaches 8,000,000,000.
 #[contract]
 mod SpiritStone {
     use super::IERC20;
@@ -30,10 +30,10 @@ mod SpiritStone {
     const DECIMAL_PART: u128 = 1000000000000000000_u128;
 
     // mint arguments, with below values, the halve time will be about 231 days 
-    const BLOCK_TIME: u64 = 100_u64; // seconds
-    const BLOCK_HALVE_INTERVAL: u64 = 200000_u64; // blocks
+    const BLOCK_TIME: u64 = 50_u64; // seconds
+    const BLOCK_HALVE_INTERVAL: u64 = 400000_u64; // blocks
 
-    const MAX_SUPPLY: u128 = 4000000000000000000000000000_u128; // tokens
+    const MAX_SUPPLY: u128 = 8000000000000000000000000000_u128; // tokens
 
 
     struct Storage {
