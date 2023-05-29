@@ -30,7 +30,7 @@ fn setup() -> (ContractAddress, u256) {
     let cur_block_timestamp = get_block_timestamp();
     set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
 
-    SpiritStone::mint(account);
+    SpiritStone::_mint(account);
 
     SpiritStone::constructor(NAME, SYMBOL);
     (account, initial_supply)
@@ -438,7 +438,7 @@ fn test_mint() {
     let supply_before = SpiritStone::totalSupply();
     let mint_count_before = SpiritStone::mint_count();
 
-    SpiritStone::mint(minter);
+    SpiritStone::_mint(minter);
 
     let minter_balance = SpiritStone::balanceOf(minter);
     assert(minter_balance == amount, 'Should eq amount');
@@ -459,7 +459,7 @@ fn test_mint_max_supply() {
     set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
 
     let minter: ContractAddress = contract_address_const::<2>();
-    SpiritStone::mint(minter);
+    SpiritStone::_mint(minter);
 }
 
 #[test]

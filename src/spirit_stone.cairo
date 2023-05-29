@@ -221,7 +221,8 @@ mod SpiritStone {
     }
 
     #[external]
-    fn mint(recipient: ContractAddress) {
+    fn mint() {
+        let recipient = get_caller_address();
         _mint(recipient)
     }
 
