@@ -344,7 +344,8 @@ mod SpiritStone {
 
             // use prng to get a random index
             seed = (seed * 1103515245 + 12345) % 2147483648;
-            let seed_u64: u64 = seed.try_into().unwrap();
+            let seed_felt: felt252 = seed.into();
+            let seed_u64: u64 = seed_felt.try_into().unwrap();
             let index: u64 = (seed_u64 % candidates_count) + 1;
 
             let recipient = _mint_candidates_index::read(index);
