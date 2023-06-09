@@ -21,10 +21,13 @@ trait IERC20 {
 #[contract]
 mod SpiritStone {
     use super::IERC20;
-    use integer::BoundedInt;
+    use cmp::min;
+    use box::BoxTrait;
+    use option::OptionTrait;
+    use integer::{BoundedInt, TryInto, Into, Felt252IntoU256};
     use starknet::ContractAddress;
     use starknet::get_caller_address;
-    use starknet::get_block_timestamp;
+    use starknet::{get_block_timestamp, get_tx_info};
     use zeroable::Zeroable;
     use starknet::contract_address::ContractAddressZeroable;
 
@@ -45,6 +48,12 @@ mod SpiritStone {
         _allowances: LegacyMap<(ContractAddress, ContractAddress), u256>,
         _start_time: u64,
         _mint_count: u64,
+
+        // mint_candidates
+        _mint_candidates_count: u64,
+        _mint_candidates: LegacyMap<ContractAddress, u64>,
+        _mint_candidates_index: LegacyMap<u64, ContractAddress>,
+        _mint_flag: u64,
     }
 
     #[event]
@@ -52,6 +61,10 @@ mod SpiritStone {
 
     #[event]
     fn Approval(owner: ContractAddress, spender: ContractAddress, value: u256) {}
+
+    #[event]
+    fn Apply(candidate: ContractAddress, mint_flag: u64) {}
+    fn RepeatApply(candidate: ContractAddress, mint_flag: u64) {}
 
     impl SpiritStone of IERC20 {
         fn name() -> felt252 {
@@ -102,6 +115,7 @@ mod SpiritStone {
     fn constructor(name: felt252, symbol: felt252) {
         initializer(name, symbol);
         _start_time::write(get_block_timestamp());
+        _mint_flag::write(1);
     }
 
     #[view]
@@ -142,6 +156,19 @@ mod SpiritStone {
     #[view]
     fn mint_count() -> u64 {
         _mint_count::read()
+    }
+
+    #[view]
+    fn mint_candidates_count() -> u64 {
+        _mint_candidates_count::read()
+    }
+
+    #[view]
+    fn is_mint_candidate(candidate: ContractAddress) -> bool {
+        if (available_mint_count() > 0) {
+            return false;
+        }
+        _mint_candidates::read(candidate) == _mint_flag::read()
     }
 
     #[view]
@@ -222,9 +249,10 @@ mod SpiritStone {
     }
 
     #[external]
-    fn mint() {
+    fn apply_mint() {
         let recipient = get_caller_address();
-        _mint(recipient)
+        _try_mint();
+        _add_candidate(recipient);
     }
 
     ///
@@ -252,28 +280,94 @@ mod SpiritStone {
     }
 
     #[internal]
-    fn _mint(recipient: ContractAddress) {
-        assert(!recipient.is_zero(), 'SpiritStone: mint to 0');
+    fn _add_candidate(recipient: ContractAddress) {
 
-        // check available mint count
-        assert(available_mint_count() > 0, 'mint limit reached');
+        let candidate_flag = _mint_candidates::read(recipient);
+        let mint_flag = _mint_flag::read();
+        // check if recipient is already a candidate
+        if (candidate_flag != mint_flag) {
+            let mint_candidates_count = _mint_candidates_count::read() + 1;
+            _mint_candidates_count::write(mint_candidates_count);
+            _mint_candidates::write(recipient, mint_flag);
+            _mint_candidates_index::write(mint_candidates_count, recipient);
+            Apply(recipient, mint_flag);
+        } else {
+            // already a candidate
+            RepeatApply(recipient, mint_flag);
+        }
+    }
 
-        let block_reward = block_reward();
+    #[internal]
+    fn _clear_candidates() {
+        _mint_candidates_count::write(0);
+        _mint_flag::write(_mint_flag::read() + 1);
+    }
 
-        // check max supply
+    #[internal]
+    fn _get_seed() -> u128 {
+        let transaction_hash: u256 = get_tx_info().unbox().transaction_hash.into();
+        let ts_felt: felt252 = get_block_timestamp().into();
+        let block_timestamp: u256 = ts_felt.into();
+        return (transaction_hash + block_timestamp).low;
+    }
+
+    #[internal]
+    fn _try_mint() {
+
+        let candidates_count = _mint_candidates_count::read();
+        if (candidates_count == 0) {
+            return ();
+        }
+
+        let available_count = available_mint_count();
+        if (available_count == 0) {
+            return ();
+        }
+
         let max_supply = max_supply();
-        assert(max_supply - _total_supply::read() >= block_reward, 'max supply reached');
+        let mint_times = min(available_count, candidates_count);
+        let mut i: u64 = 0;
+        // prevent overflow
+        let mut seed = _get_seed() % 18446744073709551616;
+        loop {
+            // check mint times
+            if (i >= mint_times) {
+                break ();
+            }
+            i += 1;
 
-        _total_supply::write(_total_supply::read() + block_reward);
-        _balances::write(recipient, _balances::read(recipient) + block_reward);
-        _mint_count::write(_mint_count::read() + 1_u64);
+            // check max supply
+            let block_reward = block_reward();
+            if (max_supply - _total_supply::read() < block_reward) {
+                break ();
+            }
 
-        Transfer(Zeroable::zero(), recipient, block_reward);
+            // use prng to get a random index
+            seed = (seed * 1103515245 + 12345) % 2147483648;
+            let seed_u64: u64 = seed.try_into().unwrap();
+            let index: u64 = (seed_u64 % candidates_count) + 1;
+
+            let recipient = _mint_candidates_index::read(index);
+            _mint_count::write(_mint_count::read() + 1);
+            _mint(recipient, block_reward);
+        };
+
+        _clear_candidates();
+    }
+
+    #[internal]
+    fn _mint(recipient: ContractAddress, amount: u256) {
+        assert(_total_supply::read() + amount <= max_supply(), 'max supply reached');
+        _total_supply::write(_total_supply::read() + amount);
+        _balances::write(recipient, _balances::read(recipient) + amount);
+        Transfer(Zeroable::zero(), recipient, amount);
     }
 
     #[internal]
     fn _burn(account: ContractAddress, amount: u256) {
         assert(!account.is_zero(), 'SpiritStone: burn from 0');
+        assert(_balances::read(account) >= amount, 'burn amount exceeds balance');
+
         _total_supply::write(_total_supply::read() - amount);
         _balances::write(account, _balances::read(account) - amount);
         Transfer(account, Zeroable::zero(), amount);

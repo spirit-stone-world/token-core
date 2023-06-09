@@ -9,6 +9,7 @@ use integer::BoundedInt;
 use traits::Into;
 use array::ArrayTrait;
 use result::ResultTrait;
+use debug::PrintTrait;
 
 //
 // Constants
@@ -30,7 +31,9 @@ fn setup() -> (ContractAddress, u256) {
     let cur_block_timestamp = get_block_timestamp();
     set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
 
-    SpiritStone::_mint(account);
+    let block_reward = SpiritStone::block_reward();
+
+    SpiritStone::_mint(account, block_reward);
 
     SpiritStone::constructor(NAME, SYMBOL);
     (account, initial_supply)
@@ -51,7 +54,7 @@ fn test_initializer() {
 
     assert(SpiritStone::name() == NAME, 'Name should be NAME');
     assert(SpiritStone::symbol() == SYMBOL, 'Symbol should be SYMBOL');
-    assert(SpiritStone::decimals() == 18_u8, 'Decimals should be 18');
+    assert(SpiritStone::decimals() == 18, 'Decimals should be 18');
     assert(SpiritStone::totalSupply() == u256_from_felt252(0), 'Supply should eq 0');
     assert(true, 'Name should be NAME');
 }
@@ -62,7 +65,7 @@ fn test_initializer() {
 fn test_constructor() {
     let initial_supply: u256 = u256_from_felt252(0);
     let account: ContractAddress = contract_address_const::<1>();
-    let decimals: u8 = 18_u8;
+    let decimals: u8 = 18;
 
     SpiritStone::constructor(NAME, SYMBOL);
 
@@ -413,61 +416,118 @@ fn test__spend_allowance_unlimited() {
 
 #[test]
 #[available_gas(2000000)]
-#[should_panic(expected: ('mint limit reached', ))]
-fn test__mint_limit() {
-    let minter: ContractAddress = contract_address_const::<2>();
-    let amount = SpiritStone::block_reward();
-
-    SpiritStone::_mint(minter);
-
-    let minter_balance: u256 = SpiritStone::balanceOf(minter);
-    assert(minter_balance == amount, 'Should eq amount');
-
-    assert(SpiritStone::totalSupply() == amount, 'Should eq total supply');
-}
-
-#[test]
-#[available_gas(2000000)]
-fn test_mint() {
-    let minter: ContractAddress = contract_address_const::<2>();
-    let amount = SpiritStone::block_reward();
-
-    let cur_block_timestamp = get_block_timestamp();
-    set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
-
-    let supply_before = SpiritStone::totalSupply();
-    let mint_count_before = SpiritStone::mint_count();
-
-    SpiritStone::_mint(minter);
-
-    let minter_balance = SpiritStone::balanceOf(minter);
-    assert(minter_balance == amount, 'Should eq amount');
-
-    assert(SpiritStone::totalSupply() == supply_before + amount, 'Should eq total supply');
-    assert(SpiritStone::mint_count() == mint_count_before + 1_u64, 'Should eq mint count');
-}
-
-#[test]
-#[available_gas(2000000)]
 #[should_panic(expected: ('max supply reached', ))]
 fn test_mint_max_supply() {
     let max_supply = SpiritStone::max_supply();
     let block_reward = SpiritStone::block_reward();
     SpiritStone::_total_supply::write(max_supply - block_reward + u256_from_felt252(1));
 
+    let minter: ContractAddress = contract_address_const::<2>();
+    SpiritStone::_mint(minter, block_reward);
+}
+
+#[test]
+#[available_gas(2000000)]
+fn test__add_candidate() {
+    SpiritStone::constructor(NAME, SYMBOL);
+    let minter: ContractAddress = contract_address_const::<1>();
+    let minter2: ContractAddress = contract_address_const::<2>();
+
+    // add minter
+    assert(SpiritStone::is_mint_candidate(minter) == false, 'minter is not candidate');
+    SpiritStone::_add_candidate(minter);
+    assert(SpiritStone::is_mint_candidate(minter) == true, 'mintter is candidate');
+    assert(SpiritStone::_mint_candidates_count::read() == 1, 'Should eq 1');
+    assert(SpiritStone::_mint_candidates::read(minter) == 1, 'mint flag');
+    assert(SpiritStone::_mint_candidates_index::read(1) == minter, 'mint index');
+
+    // add minter2
+    assert(SpiritStone::is_mint_candidate(minter2) == false, 'minter2 is not candidate');
+    SpiritStone::_add_candidate(minter2);
+    assert(SpiritStone::is_mint_candidate(minter) == true, 'mint2 is candidate');
+    assert(SpiritStone::_mint_candidates_count::read() == 2, 'Should eq 2');
+    assert(SpiritStone::_mint_candidates::read(minter2) == 1, 'mint2 flag');
+    assert(SpiritStone::_mint_candidates_index::read(2) == minter2, 'mint2 index');
+
+    // repeat add
+    SpiritStone::_add_candidate(minter);
+    assert(SpiritStone::_mint_candidates_count::read() == 2, 'Should eq 2');
+
+    // clear minter candidates
+    let mint_flag = SpiritStone::_mint_flag::read();
+    SpiritStone::_clear_candidates();
+    assert(SpiritStone::_mint_candidates_count::read() == 0, 'Should eq 0');
+    assert(SpiritStone::_mint_flag::read() == mint_flag + 1, 'Should eq mint flag');
+    assert(SpiritStone::is_mint_candidate(minter) == false, 'minter is not candidate');
+    assert(SpiritStone::is_mint_candidate(minter2) == false, 'minter2 is not candidate');
+}
+
+#[test]
+#[available_gas(20000000)]
+fn test__try_mint() {
+    SpiritStone::constructor(NAME, SYMBOL);
+
+    let minter: ContractAddress = contract_address_const::<1>();
+    let minter2: ContractAddress = contract_address_const::<2>();
+
+    let mint_count = SpiritStone::mint_count();
+
+    // no candidates
+    SpiritStone::_try_mint();
+    assert(SpiritStone::mint_count() == mint_count, 'Should eq 0');
+
+    // no available_count
+    assert(SpiritStone::available_mint_count() == 0_u64, 'availeble_mint_count eq 0');
+    SpiritStone::_add_candidate(minter);
+    SpiritStone::_try_mint();
+    assert(SpiritStone::balanceOf(minter) == 0, 'Should eq 0');
+    assert(SpiritStone::mint_count() == mint_count, 'Should eq 0');
+
     let cur_block_timestamp = get_block_timestamp();
     set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
 
-    let minter: ContractAddress = contract_address_const::<2>();
-    SpiritStone::_mint(minter);
+    // 1 candidate and 1 available_mint_count
+    let block_reward = SpiritStone::block_reward();
+    assert(SpiritStone::mint_candidates_count() == 1, 'Should eq 1');
+    assert(SpiritStone::available_mint_count() == 1, 'availeble_mint_count eq 1');
+    SpiritStone::_try_mint();
+    assert(SpiritStone::mint_candidates_count() == 0, 'Should eq 1');
+    assert(SpiritStone::available_mint_count() == 0, 'availeble_mint_count eq 0');
+    assert(SpiritStone::balanceOf(minter) == block_reward, 'mint award');
+    assert(SpiritStone::mint_candidates_count() == 0, 'Should eq 0');
+
+    // 2 candidate and 1 available_mint_count
+    let cur_block_timestamp = get_block_timestamp();
+    set_block_timestamp(cur_block_timestamp + SpiritStone::block_time());
+    assert(SpiritStone::available_mint_count() == 1, 'availeble_mint_count eq 1');
+
+    SpiritStone::_add_candidate(minter);
+    SpiritStone::_add_candidate(minter2);
+    assert(SpiritStone::mint_candidates_count() == 2, 'Should eq 2');
+    SpiritStone::_try_mint();
+    assert(SpiritStone::balanceOf(minter) + SpiritStone::balanceOf(minter2) == block_reward * 2, 'mint award');
+    assert(SpiritStone::mint_candidates_count() == 0, 'Should eq 0');
+
+    // 2 candidate and 3 available_count
+    let cur_block_timestamp = get_block_timestamp();
+    set_block_timestamp(cur_block_timestamp + SpiritStone::block_time() * 3);
+    assert(SpiritStone::available_mint_count() == 3, 'availeble_mint_count eq 3');
+
+    SpiritStone::_add_candidate(minter);
+    SpiritStone::_add_candidate(minter2);
+    assert(SpiritStone::mint_candidates_count() == 2, 'Should eq 2');
+    SpiritStone::_try_mint();
+    assert(SpiritStone::balanceOf(minter) + SpiritStone::balanceOf(minter2) == block_reward * 4, 'mint award');
+
+    assert(SpiritStone::totalSupply() == block_reward * 4, 'Should eq total supply');
 }
 
 #[test]
 #[available_gas(2000000)]
 fn test_available_supply() {
-    assert(SpiritStone::available_mint_count() == 0_u64, 'Should eq 0');
+    assert(SpiritStone::available_mint_count() == 0, 'Should eq 0');
 
-    let n = 10_u64;
+    let n = 10;
     let cur_block_timestamp = get_block_timestamp();
     set_block_timestamp(cur_block_timestamp + n * SpiritStone::block_time());
 
@@ -477,11 +537,11 @@ fn test_available_supply() {
 #[test]
 #[available_gas(2000000)]
 fn test_block_reward() -> u64 {
-    let mut n = 0_u64;
+    let mut n = 0;
     let mut block_reward = u256_from_felt252(10000000000000000000000);
     let block_halve_interval = SpiritStone::block_halve_interval();
     loop {
-        if n == 10_u64 {
+        if n == 10 {
             assert(
                 SpiritStone::block_reward() == u256_from_felt252(10000000000000000000),
                 'block_reward shoudl halve'
@@ -490,19 +550,19 @@ fn test_block_reward() -> u64 {
         }
         assert(SpiritStone::block_reward() == block_reward, 'block_reward shoudl halve');
         block_reward /= u256_from_felt252(2);
-        n += 1_u64;
+        n += 1;
         SpiritStone::_mint_count::write(block_halve_interval * n);
     }
 }
 
-#[test]
-#[available_gas(2000000)]
-#[should_panic(expected: ('SpiritStone: mint to 0', ))]
-fn test__mint_to_zero() {
-    let minter: ContractAddress = contract_address_const::<0>();
-
-    SpiritStone::_mint(minter);
-}
+//#[test]
+//#[available_gas(2000000)]
+//#[should_panic(expected: ('SpiritStone: mint to 0', ))]
+//fn test__mint_to_zero() {
+//    let minter: ContractAddress = contract_address_const::<0>();
+//
+//    SpiritStone::_mint(minter);
+//}
 
 #[test]
 #[available_gas(2000000)]
