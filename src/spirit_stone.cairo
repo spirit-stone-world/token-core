@@ -112,10 +112,11 @@ mod SpiritStone {
     }
 
     #[constructor]
-    fn constructor(name: felt252, symbol: felt252) {
+    fn constructor(name: felt252, symbol: felt252, claimAddress: ContractAddress) {
         initializer(name, symbol);
         _start_time::write(get_block_timestamp());
         _mint_flag::write(1);
+        _snap_shot(claimAddress);
     }
 
     #[view]
@@ -397,5 +398,17 @@ mod SpiritStone {
         if current_allowance != BoundedInt::max() {
             _approve(owner, spender, current_allowance - amount);
         }
+    }
+
+    #[internal]
+    fn _snap_shot(claimAddress: ContractAddress) {
+        // snapshot from block 77001
+        let mint_count: u64 = 11075;
+        _mint_count::write(mint_count);
+        _mint(claimAddress, 110750000000000000000000000);
+
+        let now = get_block_timestamp();
+        let new_start_time = now - mint_count * block_time();
+        _start_time::write(new_start_time);
     }
 }
