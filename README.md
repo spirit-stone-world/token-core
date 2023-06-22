@@ -1,4 +1,4 @@
-# Spirit Stone Contracts for Cairo-1.0
+# Spirit Stone Contracts for Cairo
 This is an ERC-20 contract modified according to OpenZeppelin's [implementation](https://github.com/OpenZeppelin/cairo-contracts/blob/cairo-1/src/openzeppelin/token/erc20.cairo) and it features the following characteristics:
 
 -  There is no initial allocation, all tokens are generated through minting.
@@ -9,7 +9,7 @@ This is an ERC-20 contract modified according to OpenZeppelin's [implementation]
 
 ## Development
 
-- Install [cairo-1.0](https://github.com/starkware-libs/cairo).
+- - Install [cairo-v1.1.0](https://github.com/starkware-libs/cairo/tree/v1.1.0).
 
 - Set `cairo-test`, `cairo-format` and `starknet-compile` in your $PATH.
 
